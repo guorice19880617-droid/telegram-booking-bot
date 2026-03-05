@@ -33,12 +33,12 @@ from telegram.ext import (
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# ⭐ Bot 只创建一次
+# ⭐ 只创建一次 Bot
 app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
 # ===============================
-# 预约配置
+# 状态缓存（群聊专用 ⭐⭐⭐⭐⭐）
 # ===============================
 schedule_config = {
     "days": [],
@@ -46,6 +46,9 @@ schedule_config = {
 }
 
 booking_status = {}
+
+# ⭐ 群聊步骤记录
+chat_step = {}
 
 
 # ===============================
@@ -63,34 +66,39 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===============================
 async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    chat_step[update.message.chat_id] = "days"
+
     await update.message.reply_text(
         "请输入日期（例如：周一,周二,周三）"
     )
 
-    context.user_data["step"] = "days"
-
 
 # ===============================
-# 文本输入流程
+# 文本流程控制 ⭐⭐⭐⭐⭐
 # ===============================
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text
+    chat_id = update.message.chat_id
 
-    if context.user_data.get("step") == "days":
+    step = chat_step.get(chat_id)
+
+    # 输入日期
+    if step == "days":
 
         schedule_config["days"] = text.split(",")
-        context.user_data["step"] = "times"
+        chat_step[chat_id] = "times"
 
         await update.message.reply_text(
             "请输入时间段（例如：8:00-9:00,9:00-10:00）"
         )
         return
 
-    if context.user_data.get("step") == "times":
+    # 输入时间段
+    if step == "times":
 
         schedule_config["times"] = text.split(",")
-        context.user_data["step"] = None
+        chat_step[chat_id] = None
 
         await show_panel(update)
         return
@@ -115,7 +123,7 @@ async def show_panel(update):
 
 
 # ===============================
-# 按钮点击
+# 按钮点击预约
 # ===============================
 async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -180,6 +188,6 @@ app_bot.add_handler(CallbackQueryHandler(booking_callback))
 
 
 # ===============================
-# 启动 Bot ⭐⭐⭐⭐⭐
+# 启动 Bot
 # ===============================
 app_bot.run_polling()
