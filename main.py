@@ -66,7 +66,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===============================
 async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    chat_step[update.message.chat_id] = "days"
+    chat = update.effective_chat
+    user = update.effective_user
+
+    # ⭐ 判断是否是管理员
+    admins = await context.bot.get_chat_administrators(chat.id)
+
+    admin_ids = [admin.user.id for admin in admins]
+
+    if user.id not in admin_ids:
+        await update.message.reply_text("❌ 只有管理员可以创建预约表")
+        return
+
+    chat_step[chat.id] = "days"
 
     await update.message.reply_text(
         "请输入日期（例如：周一,周二,周三）"
