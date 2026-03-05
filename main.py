@@ -5,7 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 
 # ====== 在这里填写你的信息 ======
 import os 
-BOT_TOKEN = os.getenv("8386805229:AAFzJoEXLVnwqcMICr6Id4zwkPluibILhXE")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = -1000000000000  # 先随便写，后面我们再改成真实ID
 ADMIN_ID = 123456789  # 填写你的Telegram数字ID
 # =================================
