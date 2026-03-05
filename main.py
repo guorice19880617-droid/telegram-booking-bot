@@ -95,13 +95,25 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # 输入时间段
-    if step == "times":
+   if step == "times":
 
-        schedule_config["times"] = text.split(",")
-        chat_step[chat_id] = None
+    schedule_config["times"] = text.split(",")
+    chat_step[chat_id] = None
 
-        await show_panel(update)
-        return
+    # ⭐ 直接生成日期按钮
+    keyboard = []
+
+    for d in schedule_config["days"]:
+        keyboard.append([
+            InlineKeyboardButton(d, callback_data=f"day_{d}")
+        ])
+
+    await update.message.reply_text(
+        "✅ 预约表已生成\n点击日期开始预约",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+    return
 
 
 # ===============================
