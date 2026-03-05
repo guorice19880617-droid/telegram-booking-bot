@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # ====== 在这里填写你的信息 ======
-BOT_TOKEN = "填写你的BOT_TOKEN"
+import os BOT_TOKEN = os.getenv("8386805229:AAFzJoEXLVnwqcMICr6Id4zwkPluibILhXE")
 CHANNEL_ID = -1000000000000  # 先随便写，后面我们再改成真实ID
 ADMIN_ID = 123456789  # 填写你的Telegram数字ID
 # =================================
