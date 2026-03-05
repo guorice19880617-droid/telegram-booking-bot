@@ -1,8 +1,10 @@
+# ===============================
+# Flask 保活（Render 必须）
+# ===============================
 from flask import Flask
 import threading
 import os
 
-# -------- Flask 端口（给 Render 检测用）--------
 app = Flask(__name__)
 
 @app.route("/")
@@ -15,27 +17,50 @@ def run_web():
 
 threading.Thread(target=run_web).start()
 
-# -------- Telegram Bot --------
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+# ===============================
+# Telegram Bot
+# ===============================
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters
+)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("机器人已启动")
+# ⭐ Bot 只创建一次
+app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
-#----------
-# 预约表配置
+# ===============================
+# 预约配置
+# ===============================
 schedule_config = {
     "days": [],
     "times": []
 }
 
-# 预约状态
 booking_status = {}
 
-#---------------
+
+# ===============================
+# start
+# ===============================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🤖 机器人已启动\n\n"
+        "使用 /create 创建预约表"
+    )
+
+
+# ===============================
+# 创建排班
+# ===============================
 async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
@@ -44,12 +69,16 @@ async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["step"] = "days"
 
-#----------
+
+# ===============================
+# 文本输入流程
+# ===============================
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text
 
     if context.user_data.get("step") == "days":
+
         schedule_config["days"] = text.split(",")
         context.user_data["step"] = "times"
 
@@ -59,13 +88,17 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if context.user_data.get("step") == "times":
+
         schedule_config["times"] = text.split(",")
         context.user_data["step"] = None
 
         await show_panel(update)
         return
 
-#--------
+
+# ===============================
+# 显示预约面板
+# ===============================
 async def show_panel(update):
 
     keyboard = []
@@ -80,7 +113,10 @@ async def show_panel(update):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-#-----------
+
+# ===============================
+# 按钮点击
+# ===============================
 async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
@@ -89,7 +125,9 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = query.from_user.first_name
     data = query.data
 
+    # 选择日期
     if data.startswith("day_"):
+
         day = data.split("_")[1]
 
         keyboard = []
@@ -101,7 +139,10 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text = f"{t} ({name})" if name else t
 
             keyboard.append([
-                InlineKeyboardButton(text, callback_data=f"book_{day}_{t}")
+                InlineKeyboardButton(
+                    text,
+                    callback_data=f"book_{day}_{t}"
+                )
             ])
 
         await query.message.reply_text(
@@ -109,9 +150,10 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
+    # 预约时间
     if data.startswith("book_"):
-        _, day, t = data.split("_")
 
+        _, day, t = data.split("_")
         key = f"{day}_{t}"
 
         if key in booking_status:
@@ -126,8 +168,18 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ {user} 预约成功 {day} {t}"
         )
 
-#--------
+
+# ===============================
+# Handler 注册 ⭐⭐⭐⭐⭐
+# ===============================
+app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("create", create_schedule))
+
 app_bot.add_handler(MessageHandler(filters.TEXT, text_handler))
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
+
+
+# ===============================
+# 启动 Bot ⭐⭐⭐⭐⭐
+# ===============================
 app_bot.run_polling()
