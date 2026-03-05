@@ -24,10 +24,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("机器人已启动")
 
-app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
-app_bot.add_handler(CommandHandler("start", start))
-
-app_bot.run_polling()
 
 #----------
 # 预约表配置
