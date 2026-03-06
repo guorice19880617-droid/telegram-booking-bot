@@ -1,5 +1,5 @@
 # ===============================
-# Flask 保活（Render）
+# Flask 保活（Render 必须）
 # ===============================
 from flask import Flask
 import threading
@@ -33,11 +33,12 @@ from telegram.ext import (
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+# ⭐ 只创建一次 Bot
 app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
 # ===============================
-# 数据缓存
+# 状态缓存（群聊专用 ⭐⭐⭐⭐⭐）
 # ===============================
 schedule_config = {
     "days": [],
@@ -45,15 +46,9 @@ schedule_config = {
 }
 
 booking_status = {}
+
+# ⭐ 群聊步骤记录
 chat_step = {}
-panel_message_id = {}
-
-
-# ===============================
-# 工具函数
-# ===============================
-def split_text(text):
-    return [x.strip() for x in text.replace("，", ",").split(",") if x.strip()]
 
 
 # ===============================
@@ -61,92 +56,74 @@ def split_text(text):
 # ===============================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 排班机器人\n\n"
-        "/create 创建排班表"
+        "🤖 机器人已启动\n\n"
+        "使用 /create 创建预约表"
     )
 
 
 # ===============================
-# 创建排班（管理员）
+# 创建排班
 # ===============================
 async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    chat = update.effective_chat
-    user = update.effective_user
-
-    admins = await context.bot.get_chat_administrators(chat.id)
-    admin_ids = [a.user.id for a in admins]
-
-    if user.id not in admin_ids:
-        await update.message.reply_text("❌ 仅管理员可创建排班")
-        return
-
-    chat_step[chat.id] = "days"
+    chat_step[update.message.chat_id] = "days"
 
     await update.message.reply_text(
-        "请输入日期\n例如：周一,周二,周三"
+        "请输入日期（例如：周一,周二,周三）"
     )
 
 
 # ===============================
-# 文本流程控制
+# 文本流程控制 ⭐⭐⭐⭐⭐
 # ===============================
-
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    if not update.message:
-        return
-
     text = update.message.text
-    chat_id = update.effective_chat.id
+    chat_id = update.message.chat_id
 
     step = chat_step.get(chat_id)
 
     # 输入日期
     if step == "days":
 
-        schedule_config["days"] = split_text(text)
-
+        schedule_config["days"] = text.split(",")
         chat_step[chat_id] = "times"
 
         await update.message.reply_text(
-            "请输入时间段\n例如：8:00-9:00,9:00-10:00"
+            "请输入时间段（例如：8:00-9:00,9:00-10:00）"
         )
-
         return
 
     # 输入时间段
     if step == "times":
 
-        schedule_config["times"] = split_text(text)
-
+        schedule_config["times"] = text.split(",")
         chat_step[chat_id] = None
 
         await show_panel(update)
-
         return
 
 
 # ===============================
-# 显示排班面板（顶级体验 ⭐⭐⭐⭐⭐）
+# 显示预约面板
 # ===============================
-async def show_panel(update: Update):
+async def show_panel(update):
 
-    keyboard = [
-        [InlineKeyboardButton(d, callback_data=f"day_{d}")]
-        for d in schedule_config["days"]
-    ]
+    keyboard = []
 
-    msg = await update.message.reply_text(
-        "✅ 排班表已生成\n点击日期预约",
+    for d in schedule_config["days"]:
+        keyboard.append([
+            InlineKeyboardButton(d, callback_data=f"day_{d}")
+        ])
+
+    await update.message.reply_text(
+        "✅ 预约表已生成\n点击日期开始预约",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-   
-
 
 # ===============================
-# 按钮预约
+# 按钮点击预约
 # ===============================
 async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -155,7 +132,6 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = query.from_user.first_name
     data = query.data
-    chat_id = query.message.chat_id
 
     # 选择日期
     if data.startswith("day_"):
@@ -186,7 +162,6 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("book_"):
 
         _, day, t = data.split("_")
-
         key = f"{day}_{t}"
 
         if key in booking_status:
@@ -198,23 +173,21 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         booking_status[key] = user
 
         await query.message.reply_text(
-            f"✅ {user} 预约成功\n{day} {t}"
+            f"✅ {user} 预约成功 {day} {t}"
         )
 
 
 # ===============================
-# Handler 注册
+# Handler 注册 ⭐⭐⭐⭐⭐
 # ===============================
 app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("create", create_schedule))
 
-app_bot.add_handler(
-    MessageHandler(filters.TEXT, text_handler)
-)
+app_bot.add_handler(MessageHandler(filters.TEXT, text_handler))
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
 
 
 # ===============================
-# 启动
+# 启动 Bot
 # ===============================
 app_bot.run_polling()
