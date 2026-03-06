@@ -277,7 +277,32 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(
             f"✅ {user} 预约成功\n\n{day} {t}"
         )
+        total = len(schedule_config["days"]) * len(schedule_config["times"])
 
+if len(booking_status) == total:
+    await query.message.reply_text(
+        "🎉 所有时间段已预约完成\n\n管理员可输入 /list 查看预约表"
+    )
+        
+# ===============================
+# 显示预约表
+# ===============================
+async def list_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    text = "📋 当前预约表\n\n"
+
+    for d in schedule_config["days"]:
+        text += f"{d}\n"
+
+        for t in schedule_config["times"]:
+            key = f"{d}_{t}"
+            name = booking_status.get(key, "空")
+
+            text += f"{t}  {name}\n"
+
+        text += "\n"
+
+    await update.message.reply_text(text)
 
 # ===============================
 # Handler
@@ -290,7 +315,7 @@ bot.add_handler(CommandHandler("ban", ban))
 
 bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 bot.add_handler(CallbackQueryHandler(callback))
-
+app_bot.add_handler(CommandHandler("list", list_schedule))
 
 # ===============================
 # 启动
