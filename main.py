@@ -96,7 +96,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not update.message:
         return
-
+print("收到消息:", update.message.text)
     text = update.message.text
     chat_id = update.effective_chat.id
 
