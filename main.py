@@ -132,8 +132,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===============================
 async def show_panel(update: Update):
 
-    chat_id = update.effective_chat.id
-
     keyboard = [
         [InlineKeyboardButton(d, callback_data=f"day_{d}")]
         for d in schedule_config["days"]
@@ -144,7 +142,7 @@ async def show_panel(update: Update):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-    panel_message_id[chat_id] = msg.message_id
+   
 
 
 # ===============================
@@ -211,10 +209,7 @@ app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("create", create_schedule))
 
 app_bot.add_handler(
-    MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        text_handler
-    )
+    MessageHandler(filters.TEXT, text_handler)
 )
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
 
