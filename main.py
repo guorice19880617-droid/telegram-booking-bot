@@ -107,16 +107,16 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===============================
 # 显示预约面板
 # ===============================
-async def show_panel(update):
+async def show_panel(update: Update):
 
-    keyboard = []
+    chat_id = update.effective_chat.id
 
-    for d in schedule_config["days"]:
-        keyboard.append([
-            InlineKeyboardButton(d, callback_data=f"day_{d}")
-        ])
+    keyboard = [
+        [InlineKeyboardButton(d, callback_data=f"day_{d}")]
+        for d in schedule_config["days"]
+    ]
 
-    await update.message.reply_text(
+    await update.effective_chat.send_message(
         "✅ 预约表已生成\n点击日期开始预约",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
