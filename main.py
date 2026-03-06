@@ -210,7 +210,12 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("create", create_schedule))
 
-app_bot.add_handler(MessageHandler(filters.TEXT, text_handler))
+app_bot.add_handler(
+    MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        text_handler
+    )
+)
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
 
 
