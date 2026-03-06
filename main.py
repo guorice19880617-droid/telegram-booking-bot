@@ -150,17 +150,20 @@ async def show_panel(update: Update):
         for d in schedule_config["days"]
     ]
 
-    notice = f"""
-✅ 预约表已生成
+    notice = """
+📢 *预约公告*
 
-截止时间：
-{schedule_config['deadline']}
+本次预约如未排满将自动解约，
+待下次再预约。
 
-点击日期开始预约
+如预约后未到场，将进入黑名单。
+
+感谢理解 😊
 """
 
     await update.effective_chat.send_message(
         notice,
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
