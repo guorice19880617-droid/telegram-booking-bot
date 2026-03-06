@@ -90,42 +90,45 @@ async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===============================
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    if not update.message:
+        return
+
     text = update.message.text
     chat_id = update.message.chat_id
 
     step = chat_step.get(chat_id)
 
-    # 输入日期
+    # ===== 输入日期 =====
     if step == "days":
 
-        schedule_config["days"] = text.split(",")
+        schedule_config["days"] = text.replace("，", ",").split(",")
         chat_step[chat_id] = "times"
 
         await update.message.reply_text(
             "请输入时间段（例如：8:00-9:00,9:00-10:00）"
         )
+
         return
 
-    # 输入时间段
-   if step == "times":
+    # ===== 输入时间段 =====
+    if step == "times":
 
-    schedule_config["times"] = text.split(",")
-    chat_step[chat_id] = None
+        schedule_config["times"] = text.replace("，", ",").split(",")
+        chat_step[chat_id] = None
 
-    # ⭐ 直接生成日期按钮
-    keyboard = []
+        keyboard = []
 
-    for d in schedule_config["days"]:
-        keyboard.append([
-            InlineKeyboardButton(d, callback_data=f"day_{d}")
-        ])
+        for d in schedule_config["days"]:
+            keyboard.append([
+                InlineKeyboardButton(d, callback_data=f"day_{d}")
+            ])
 
-    await update.message.reply_text(
-        "✅ 预约表已生成\n点击日期开始预约",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+        await update.message.reply_text(
+            "✅ 预约表已生成\n点击日期开始预约",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
-    return
+        return
 
 
 # ===============================
