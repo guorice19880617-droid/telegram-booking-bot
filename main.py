@@ -91,6 +91,7 @@ async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===============================
 # 文本流程控制
 # ===============================
+print("收到消息:", text, " step=", step)
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not update.message:
