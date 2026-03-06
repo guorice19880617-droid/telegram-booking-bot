@@ -33,16 +33,16 @@ from telegram.ext import (
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
+bot = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
 # ===============================
-# 预约公告（固定内容）
+# 公告
 # ===============================
 ANNOUNCEMENT = """
 📢 *预约公告*
 
-本次预约如未排满将自动解约  
+本次预约如未排满将自动解约
 待下次再预约。
 
 如预约后未到场，将进入黑名单。
@@ -52,14 +52,18 @@ ANNOUNCEMENT = """
 
 
 # ===============================
-# 状态缓存
+# 数据缓存
 # ===============================
-schedule_config = {
+schedule = {
     "days": [],
     "times": []
 }
 
-booking_status = {}
+booking = {}
+
+user_booking = {}
+
+blacklist = set()
 
 chat_step = {}
 
@@ -68,26 +72,71 @@ chat_step = {}
 # start
 # ===============================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     await update.message.reply_text(
-        "🤖 机器人已启动\n\n"
-        "使用 /create 创建预约表"
+        "🤖 预约机器人已启动\n\n"
+        "管理员使用 /create 创建预约表"
     )
 
 
 # ===============================
-# 创建排班
+# 创建预约
 # ===============================
-async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_step[update.message.chat_id] = "days"
 
     await update.message.reply_text(
-        "请输入日期（例如：周一,周二,周三）"
+        "请输入日期\n\n例：\n周一,周二,周三"
     )
 
 
 # ===============================
-# 文本流程控制
+# reset
+# ===============================
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    booking.clear()
+    user_booking.clear()
+
+    await update.message.reply_text("✅ 预约已清空")
+
+
+# ===============================
+# 查看预约
+# ===============================
+async def list_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    if not booking:
+        await update.message.reply_text("暂无预约")
+        return
+
+    text = "📋 当前预约\n\n"
+
+    for k,v in booking.items():
+        text += f"{k} ：{v}\n"
+
+    await update.message.reply_text(text)
+
+
+# ===============================
+# 黑名单
+# ===============================
+async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    if not context.args:
+        await update.message.reply_text("用法: /ban 用户ID")
+        return
+
+    uid = int(context.args[0])
+
+    blacklist.add(uid)
+
+    await update.message.reply_text("🚫 已加入黑名单")
+
+
+# ===============================
+# 文本流程
 # ===============================
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -96,62 +145,75 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     step = chat_step.get(chat_id)
 
-    # 输入日期
     if step == "days":
 
-        schedule_config["days"] = text.split(",")
+        schedule["days"] = text.split(",")
+
         chat_step[chat_id] = "times"
 
         await update.message.reply_text(
-            "请输入时间段（例如：8:00-9:00,9:00-10:00）"
+            "请输入时间段\n\n例：\n8:00-9:00,9:00-10:00"
         )
+
         return
 
-    # 输入时间段
+
     if step == "times":
 
-        schedule_config["times"] = text.split(",")
+        schedule["times"] = text.split(",")
+
         chat_step[chat_id] = None
 
         await show_panel(update)
+
         return
 
 
 # ===============================
-# 显示预约面板
+# 显示预约
 # ===============================
 async def show_panel(update):
 
     keyboard = []
 
-    for d in schedule_config["days"]:
+    for d in schedule["days"]:
+
         keyboard.append([
-            InlineKeyboardButton(d, callback_data=f"day_{d}")
+            InlineKeyboardButton(
+                d,
+                callback_data=f"day_{d}"
+            )
         ])
 
-    # ⭐ 先发送公告
     await update.message.reply_text(
         ANNOUNCEMENT,
         parse_mode="Markdown"
     )
 
-    # ⭐ 再发送预约表
     await update.message.reply_text(
-        "✅ 预约表已生成\n点击日期开始预约",
+        "📅 请选择预约日期",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
 # ===============================
-# 按钮点击预约
+# 按钮点击
 # ===============================
-async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     await query.answer()
 
     user = query.from_user.first_name
+    user_id = query.from_user.id
     data = query.data
+
+
+    if user_id in blacklist:
+
+        await query.message.reply_text("❌ 你已被禁止预约")
+        return
+
 
     # 选择日期
     if data.startswith("day_"):
@@ -160,9 +222,11 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = []
 
-        for t in schedule_config["times"]:
+        for t in schedule["times"]:
+
             key = f"{day}_{t}"
-            name = booking_status.get(key)
+
+            name = booking.get(key)
 
             text = f"{t} ({name})" if name else t
 
@@ -178,36 +242,57 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-    # 预约时间
+
+    # 预约
     if data.startswith("book_"):
 
         _, day, t = data.split("_")
+
         key = f"{day}_{t}"
 
-        if key in booking_status:
+
+        if key in booking:
+
             await query.message.reply_text(
-                f"❌ 已被 {booking_status[key]} 预约"
+                f"❌ 已被 {booking[key]} 预约"
             )
+
             return
 
-        booking_status[key] = user
+
+        if user_id in user_booking:
+
+            await query.message.reply_text(
+                "❌ 你已经预约过"
+            )
+
+            return
+
+
+        booking[key] = user
+
+        user_booking[user_id] = key
+
 
         await query.message.reply_text(
-            f"✅ {user} 预约成功 {day} {t}"
+            f"✅ {user} 预约成功\n\n{day} {t}"
         )
 
 
 # ===============================
-# Handler 注册
+# Handler
 # ===============================
-app_bot.add_handler(CommandHandler("start", start))
-app_bot.add_handler(CommandHandler("create", create_schedule))
+bot.add_handler(CommandHandler("start", start))
+bot.add_handler(CommandHandler("create", create))
+bot.add_handler(CommandHandler("reset", reset))
+bot.add_handler(CommandHandler("list", list_booking))
+bot.add_handler(CommandHandler("ban", ban))
 
-app_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-app_bot.add_handler(CallbackQueryHandler(booking_callback))
+bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
+bot.add_handler(CallbackQueryHandler(callback))
 
 
 # ===============================
-# 启动 Bot
+# 启动
 # ===============================
-app_bot.run_polling()
+bot.run_polling()
