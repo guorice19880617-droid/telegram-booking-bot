@@ -33,12 +33,26 @@ from telegram.ext import (
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# ⭐ 只创建一次 Bot
 app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
 # ===============================
-# 状态缓存（群聊专用 ⭐⭐⭐⭐⭐）
+# 预约公告（固定内容）
+# ===============================
+ANNOUNCEMENT = """
+📢 *预约公告*
+
+本次预约如未排满将自动解约  
+待下次再预约。
+
+如预约后未到场，将进入黑名单。
+
+感谢理解 😊
+"""
+
+
+# ===============================
+# 状态缓存
 # ===============================
 schedule_config = {
     "days": [],
@@ -47,7 +61,6 @@ schedule_config = {
 
 booking_status = {}
 
-# ⭐ 群聊步骤记录
 chat_step = {}
 
 
@@ -74,7 +87,7 @@ async def create_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===============================
-# 文本流程控制 ⭐⭐⭐⭐⭐
+# 文本流程控制
 # ===============================
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -116,6 +129,13 @@ async def show_panel(update):
             InlineKeyboardButton(d, callback_data=f"day_{d}")
         ])
 
+    # ⭐ 先发送公告
+    await update.message.reply_text(
+        ANNOUNCEMENT,
+        parse_mode="Markdown"
+    )
+
+    # ⭐ 再发送预约表
     await update.message.reply_text(
         "✅ 预约表已生成\n点击日期开始预约",
         reply_markup=InlineKeyboardMarkup(keyboard)
@@ -178,12 +198,12 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===============================
-# Handler 注册 ⭐⭐⭐⭐⭐
+# Handler 注册
 # ===============================
 app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("create", create_schedule))
 
-app_bot.add_handler(MessageHandler(filters.TEXT, text_handler))
+app_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
 
 
