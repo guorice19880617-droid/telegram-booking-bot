@@ -102,7 +102,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     step = chat_step.get(chat_id)
 
-    # ===== 输入日期 =====
+    # ========= 输入日期 =========
     if step == "days":
 
         schedule_config["days"] = split_text(text)
@@ -115,7 +115,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # ===== 输入时间段 =====
+    # ========= 输入时间段 =========
     if step == "times":
 
         schedule_config["times"] = split_text(text)
@@ -128,7 +128,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # ===== 输入截止时间 =====
+    # ========= 输入截止时间 ⭐⭐⭐⭐⭐（最重要） =========
     if step == "deadline":
 
         schedule_config["deadline"] = text
