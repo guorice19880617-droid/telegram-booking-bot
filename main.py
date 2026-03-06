@@ -153,7 +153,10 @@ async def show_panel(update: Update):
     notice = """
 📢 *预约公告*
 
-本次预约如未排满将自动解约，
+本次预约截止时间为:
+{deadline_text}
+
+预约如未排满将自动解约，
 待下次再预约。
 
 如预约后未到场，将进入黑名单。
