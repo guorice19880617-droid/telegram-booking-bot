@@ -174,7 +174,22 @@ async def list_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(text)
 
+# ===============================
+# 清空预约表（管理员）
+# ===============================
+async def clear_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    user_id = update.effective_user.id
+
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ 只有管理员可以清空预约表")
+        return
+
+    booking_status.clear()
+
+    await update.message.reply_text(
+        "🧹 当前所有预约记录已清空"
+    )
 # ===============================
 # 取消预约（管理员）
 # ===============================
@@ -281,6 +296,7 @@ app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("create", create_schedule))
 app_bot.add_handler(CommandHandler("list", list_schedule))
 app_bot.add_handler(CommandHandler("cancel", cancel_booking))
+app_bot.add_handler(CommandHandler("clear", clear_schedule))
 
 app_bot.add_handler(MessageHandler(filters.TEXT, text_handler))
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
