@@ -4,6 +4,8 @@
 from flask import Flask
 import threading
 import os
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 
@@ -173,7 +175,31 @@ async def list_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"{day} {t} — {user}\n"
 
     await update.message.reply_text(text)
+# ===============================
+# 导出预约表
+# ===============================
+async def export_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    if not booking_status:
+        await update.message.reply_text("当前没有预约记录")
+        return
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow(["日期", "时间", "用户"])
+
+    for key, user in booking_status.items():
+        day, t = key.split("_")
+        writer.writerow([day, t, user])
+
+    output.seek(0)
+
+    await update.message.reply_document(
+        document=output,
+        filename="booking.csv",
+        caption="📊 当前预约表"
+    )
 # ===============================
 # 清空预约表（管理员）
 # ===============================
@@ -297,6 +323,7 @@ app_bot.add_handler(CommandHandler("create", create_schedule))
 app_bot.add_handler(CommandHandler("list", list_schedule))
 app_bot.add_handler(CommandHandler("cancel", cancel_booking))
 app_bot.add_handler(CommandHandler("clear", clear_schedule))
+app_bot.add_handler(CommandHandler("export", export_schedule))
 
 app_bot.add_handler(MessageHandler(filters.TEXT, text_handler))
 app_bot.add_handler(CallbackQueryHandler(booking_callback))
