@@ -7,6 +7,8 @@ import os
 import csv
 from io import StringIO
 
+ADMIN_ID = 5792653387
+
 app = Flask(__name__)
 
 @app.route("/")
